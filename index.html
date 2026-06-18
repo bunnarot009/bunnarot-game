@@ -3,143 +3,236 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เครื่องคิดเลข Web App</title>
+    <title>เกมไก่วิ่งหลบสิ่งกีดขวาง (Chicken Run)</title>
     <style>
         * {
-            box-sizing: border-box;
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         body {
+            background-color: #eef2f3;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background-color: #f0f2f5;
+            overflow: hidden;
+            user-select: none;
         }
 
-        .calculator {
-            background-color: #1e1e24;
-            padding: 20px;
-            border-radius: 20px;
-            box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.3);
-            width: 320px;
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
         }
 
-        .display {
-            width: 100%;
-            height: 80px;
-            background-color: #2a2a35;
-            border: none;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            color: #ffffff;
-            font-size: 2.5rem;
-            text-align: right;
-            padding: 10px;
-            pointer-events: none;
+        .score-board {
+            font-size: 1.2rem;
+            color: #555;
+            margin-bottom: 15px;
+            font-weight: bold;
         }
 
-        .buttons {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-        }
-
-        button {
-            padding: 20px;
-            font-size: 1.5rem;
-            border: none;
-            border-radius: 12px;
+        /* พื้นหลังเกม */
+        #gameArea {
+            width: 600px;
+            height: 250px;
+            background-color: #f7f7f7;
+            border-bottom: 4px solid #545454;
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             cursor: pointer;
-            background-color: #3a3a4a;
-            color: #ffffff;
-            transition: background-color 0.2s;
         }
 
-        button:active {
-            transform: scale(0.95);
+        /* ตัวละครไก่ (สร้างจาก CSS) */
+        #chicken {
+            width: 40px;
+            height: 45px;
+            position: absolute;
+            bottom: 0;
+            left: 50px;
+            background-color: #f39c12; /* ตัวสีส้ม/เหลือง */
+            border-radius: 50% 50% 40% 40%;
         }
 
-        /* ตกแต่งสีปุ่มพิเศษ */
-        button.operator {
-            background-color: #ff9f0a;
+        /* หงอนไก่ */
+        #chicken::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 12px;
+            width: 16px;
+            height: 10px;
+            background-color: #e74c3c; /* หงอนสีแดง */
+            border-radius: 10px 10px 0 0;
+        }
+
+        /* ปากไก่ */
+        #chicken::after {
+            content: '';
+            position: absolute;
+            top: 10px;
+            right: -6px;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 8px solid #d35400; /* ปากสีส้มเข้ม */
+        }
+
+        .chicken-eye {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 6px;
+            height: 6px;
+            background-color: #000;
+            border-radius: 50%;
+        }
+
+        /* แอนิเมชันกระโดด */
+        .jump {
+            animation: jumpAnim 0.5s linear;
+        }
+
+        @keyframes jumpAnim {
+            0% { bottom: 0; }
+            50% { bottom: 110px; }
+            100% { bottom: 0; }
+        }
+
+        /* ต้นกระบองเพชร */
+        .cactus {
+            width: 25px;
+            height: 45px;
+            background-color: #27ae60;
+            position: absolute;
+            bottom: 0;
+            right: -30px;
+            border-radius: 5px 5px 0 0;
+        }
+
+        /* ข้อความจบเกม */
+        #gameOverText {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        #gameOverText h2 {
+            font-size: 2rem;
+            color: #c0392b;
+            margin-bottom: 10px;
+        }
+
+        #gameOverText p {
+            background-color: #333;
             color: white;
-        }
-
-        button.clear {
-            background-color: #ff3b30;
-            color: white;
-        }
-
-        button.equal {
-            background-color: #34c759;
-            color: white;
-            grid-column: span 2; /* ให้ปุ่มเครื่องหมายเท่ากับยาว 2 ช่อง */
-        }
-
-        button:hover {
-            filter: brightness(1.2);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
         }
     </style>
 </head>
 <body>
 
-    <div class="calculator">
-        <input type="text" class="display" id="result" readonly value="0">
+    <h1>Chicken Jump! 🐔</h1>
+    <div class="score-board">คะแนน: <span id="score">0</span> | คะแนนสูงสุด: <span id="highScore">0</span></div>
+
+    <div id="gameArea" onclick="triggerJump()">
+        <div id="chicken">
+            <div class="chicken-eye"></div>
+        </div>
         
-        <div class="buttons">
-            <button class="clear" onclick="clearDisplay()">C</button>
-            <button onclick="appendValue('/')" class="operator">÷</button>
-            <button onclick="appendValue('*')" class="operator">×</button>
-            <button onclick="appendValue('-')" class="operator">-</button>
-            
-            <button onclick="appendValue('7')">7</button>
-            <button onclick="appendValue('8')">8</button>
-            <button onclick="appendValue('9')">9</button>
-            <button onclick="appendValue('+')" class="operator">+</button>
-            
-            <button onclick="appendValue('4')">4</button>
-            <button onclick="appendValue('5')">5</button>
-            <button onclick="appendValue('6')">6</button>
-            <button onclick="appendValue('.')">.</button>
-            
-            <button onclick="appendValue('1')">1</button>
-            <button onclick="appendValue('2')">2</button>
-            <button onclick="appendValue('3')">3</button>
-            
-            <button onclick="appendValue('0')">0</button>
-            <button class="equal" onclick="calculate()">=</button>
+        <div id="cactus" class="cactus"></div>
+
+        <div id="gameOverText">
+            <h2>GAME OVER</h2>
+            <p>กด Spacebar หรือแตะหน้าจอเพื่อเริ่มใหม่</p>
         </div>
     </div>
 
     <script>
-        const display = document.getElementById('result');
+        const chicken = document.getElementById('chicken');
+        const cactus = document.getElementById('cactus');
+        const scoreDisplay = document.getElementById('score');
+        const highScoreDisplay = document.getElementById('highScore');
+        const gameOverText = document.getElementById('gameOverText');
 
-        // ฟังก์ชันสำหรับเพิ่มตัวเลขหรือเครื่องหมายบนหน้าจอ
-        function appendValue(value) {
-            if (display.value === '0' && !isNaN(value)) {
-                display.value = value; // ถ้าหน้าจอเป็น 0 ให้พิมพ์ทับตัวแรกลงไปเลย
-            } else {
-                display.value += value;
+        let score = 0;
+        let highScore = 0;
+        let isJumping = false;
+        let isGameOver = false;
+        let gameSpeed = 5;
+        let cactusPosition = 600;
+
+        // ฟังก์ชันสั่งให้ไก่กระโดด
+        function triggerJump() {
+            if (isGameOver) {
+                resetGame();
+                return;
+            }
+            if (!isJumping) {
+                isJumping = true;
+                chicken.classList.add('jump');
+                
+                // เอา class jump ออกเมื่อกระโดดเสร็จ (500ms) เพื่อให้กดกระโดดใหม่ได้
+                setTimeout(() => {
+                    chicken.classList.remove('jump');
+                    isJumping = false;
+                }, 500);
             }
         }
 
-        // ฟังก์ชันล้างหน้าจอ (ปุ่ม C)
-        function clearDisplay() {
-            display.value = '0';
+        // ดักจับการกดปุ่ม Spacebar
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space') {
+                event.preventDefault(); // ป้องกันหน้าจอสกรอลลงล่าง
+                triggerJump();
+            }
+        });
+
+        // ลูปหลักของเกม (ใช้ควบคุมการเคลื่อนที่และการชน)
+        function gameLoop() {
+            if (!isGameOver) {
+                // เคลื่อนที่กระบองเพชรไปทางซ้าย
+                cactusPosition -= gameSpeed;
+                
+                // ถ้ากระบองเพชรหลุดหน้าจอ ให้ไปเริ่มใหม่ทางขวา
+                if (cactusPosition < -30) {
+                    cactusPosition = 600;
+                    score++;
+                    scoreDisplay.innerText = score;
+                    
+                    // ทุกๆ 5 คะแนน เกมจะเร็วขึ้นเล็กน้อยเพิ่มความท้าทาย
+                    if (score % 5 === 0) {
+                        gameSpeed += 0.5;
+                    }
+                }
+                cactus.style.left = cactusPosition + 'px';
+
+                // ตรวจสอบการชน (Collision Detection)
+                let chickenBottom = parseInt(window.getComputedStyle(chicken).getPropertyValue('bottom'));
+                
+                // ระยะที่ไก่และกระบองเพชรจะชนกัน
+                if (cactusPosition > 50 && cactusPosition < 90 && chickenBottom < 45) {
+                    endGame();
+                }
+            }
+            requestAnimationFrame(gameLoop);
         }
 
-        // ฟังก์ชันคำนวณผลลัพธ์ (ปุ่ม =)
-        function calculate() {
-            try {
-                // ใช้ eval ในการคำนวณสมการคณิตศาสตร์จากข้อความ
-                display.value = eval(display.value);
-            } catch (error) {
-                display.value = 'Error'; // ถ้ากรอกสมการผิดพลาดให้ขึ้น Error
+        // ฟังก์ชันเมื่อจบเกม
+        function endGame() {
+            isGameOver = true;
+            gameOverText.style.display = 'block';
+            if (score > highScore) {
+                highScore = score;
+                highScoreDisplay.innerText = highScore;
             }
         }
-    </script>
-  
